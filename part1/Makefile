@@ -1,10 +1,6 @@
 
-CC=gcc
-CFLAGS=
-OBJ = part1.o 
 
-%.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS)
+part1.exe:
+	gcc part1.c -o part1.exe
 
-part1.exe: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS)
+.PHONY:  part1.exe

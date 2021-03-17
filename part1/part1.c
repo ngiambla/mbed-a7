@@ -6,12 +6,12 @@
 #include <unistd.h>
 
 // Include DE1 Specific Address Maps
-#include "../address_map_arm.h"
+#include "address_map_arm.h"
 #include "fileio.h"
 #include "ADXL345.h"
 
-void * SYSMGRVirt;
-void * I2C0Virt;
+unsigned int * SYSMGRVirt;
+unsigned int * I2C0Virt;
 
 
 int Running = 1;
@@ -60,9 +60,7 @@ int main(void) {
     return -1;
   }
 
-  // 16 == 
   MGPerLSB = ROUNDED_DIVISION(16*1000, 512);
-
   ADXL345_Init();
   ADXL345_Calibrate();
 

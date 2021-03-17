@@ -71,6 +71,12 @@ typedef int bool;
 
 // ADXL345 Register List
 #define ADXL345_REG_DEVID       	0x00
+// BEGIN TAP Registers
+#define ADXL345_REG_THRESH_TAP      0x1D
+#define ADXL345_REG_DUR             0x21
+#define ADXL345_REG_LATENT          0x22
+#define ADXL345_REG_WINDOW          0x23
+// END TAP registers
 #define ADXL345_REG_POWER_CTL   	0x2D
 #define ADXL345_REG_DATA_FORMAT 	0x31
 #define ADXL345_REG_FIFO_CTL    	0x38
@@ -96,8 +102,8 @@ typedef int bool;
 #define ROUNDED_DIVISION(n, d) (((n < 0) ^ (d < 0)) ? ((n - d/2)/d) : ((n + d/2)/d))
 
 
-extern unsigned int * SYSMGRVirt;
-extern unsigned int * I2C0Virt;
+extern volatile unsigned int * SYSMGRVirt;
+extern volatile unsigned int * I2C0Virt;
 
 // ADXL345 Functions
 void ADXL345_Init();
@@ -202,6 +208,80 @@ void ADXL345_REG_MULTI_READ(uint8_t address, uint8_t values[], uint8_t len){
     }
 }
 
+
+void ADXL345_SetFreq(uint16_t Freq) {
+    switch(Freq) {
+        case 3200:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_3200);
+            break;
+        case 1600:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_1600);
+            break;
+        case 800:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_800);
+            break;
+        case 400:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_400);
+            break;
+        case 200:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_200);
+            break;
+        case 100:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_100);
+            break;
+        case 50:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_50);
+            break;
+        case 25:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_25);
+            break;
+        case 12:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_12_5);
+            break;
+        case 6:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_6_25);
+            break;
+        case 3:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_3_125);
+            break;
+        case 1:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_1_563);
+            break;
+        default:
+            ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_12_5);
+    }
+}
+
+void ADXL345_SetG(bool FullRes, uint16_t G, uint16_t * Scale) {
+    uint8_t GSet;
+    switch(G) {
+        case 2:
+            GSet = XL345_RANGE_2G;
+            *Scale = ROUNDED_DIVISION(2*1000, 512);
+            break;
+        case 4:
+            GSet = XL345_RANGE_4G;
+            *Scale = ROUNDED_DIVISION(4*1000, 512);
+            break;
+        case 8:
+            GSet = XL345_RANGE_8G;
+            *Scale = ROUNDED_DIVISION(8*1000, 512);
+            break;
+        case 16:
+            GSet = XL345_RANGE_16G;
+            *Scale = ROUNDED_DIVISION(16*1000, 512);
+            break;
+        default:
+            GSet = XL345_RANGE_16G;
+            *Scale = ROUNDED_DIVISION(16*1000, 512);
+    }
+    if(FullRes) {
+        GSet |= XL345_FULL_RESOLUTION; 
+        *Scale = 4;
+    }
+    ADXL345_REG_WRITE(ADXL345_REG_DATA_FORMAT, GSet);
+}
+
 // Initialize the ADXL345 chip
 void ADXL345_Init(){
 
@@ -213,7 +293,7 @@ void ADXL345_Init(){
     
     // Output Data Rate: 12.5Hz
     ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_12_5);
-    
+
     // NOTE: The DATA_READY bit is not reliable. It is updated at a much higher rate than the Data Rate
     // Use the Activity and Inactivity interrupts.
     //----- Enabling interrupts -----//
@@ -221,8 +301,27 @@ void ADXL345_Init(){
     ADXL345_REG_WRITE(ADXL345_REG_THRESH_INACT, 0x02);  //inactivity threshold
     ADXL345_REG_WRITE(ADXL345_REG_TIME_INACT, 0x02);    //time for inactivity
     ADXL345_REG_WRITE(ADXL345_REG_ACT_INACT_CTL, 0xFF); //Enables AC coupling for thresholds
-    ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_ACTIVITY | XL345_INACTIVITY );  //enable interrupts
-    //-------------------------------//    
+
+    // Tap Threshold = 3G
+    // 3000mg/62.5mg/LSB == 48 (base 10) 
+    ADXL345_REG_WRITE(ADXL345_REG_THRESH_TAP, 48);
+
+    // Tap Duration = 0.02s
+    // 20000 us / 625 us/LSB == 32 (base 10)
+    ADXL345_REG_WRITE(ADXL345_REG_DUR, 32);
+
+    // Tap Latency = 0.02s
+    // 20 ms / 1.25ms/LSB == 16 (base 10)
+    ADXL345_REG_WRITE(ADXL345_REG_LATENT, 16);
+
+    // Double Tap Window = 0.3s
+    // 300/ 1.25ms/LSB == 240 (base 10)
+    ADXL345_REG_WRITE(ADXL345_REG_WINDOW, 240);
+
+
+    ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_SINGLETAP | XL345_SINGLETAP | XL345_ACTIVITY | XL345_INACTIVITY );  //enable interrupts
+    //-------------------------------//
+
 
     // start measure
     ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_MEASURE);
@@ -326,6 +425,35 @@ bool ADXL345_IsDataReady(){
         bReady = true;
     
     return bReady;
+}
+
+uint8_t ADXL345_WhichInterrupts() {
+    uint8_t data8;
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    return data8;
+} 
+
+bool ADXL345_WasSingleTapped() {
+    bool wasTapped = false;
+    uint8_t data8;
+    
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    if (data8 & XL345_SINGLETAP)
+        wasTapped = true;
+
+    return wasTapped;    
+
+} 
+
+bool ADXL345_WasDoubleTapped() {
+    bool wasTapped = false;
+    uint8_t data8;
+    
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    if (data8 & XL345_DOUBLETAP)
+        wasTapped = true;
+
+    return wasTapped;        
 }
 
 // Read acceleration data of all three axes
