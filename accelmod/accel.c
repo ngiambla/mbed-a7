@@ -101,7 +101,7 @@ void AccelDataToStr(void) {
   // with fresh data.
   if (InterruptFlags & XL345_DATAREADY) {
     ADXL345_XYZ_Read(XYZ);
-    if (snprintf(AccelDataStr, 15, "%4d %4d %4d\n", XYZ[0], XYZ[1], XYZ[2]) < 0) {
+    if (snprintf(AccelDataStr, 15, "%04d %04d %04d\n", XYZ[0], XYZ[1], XYZ[2]) < 0) {
       printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
       return;
     }
@@ -113,7 +113,7 @@ void AccelDataToStr(void) {
   printk(KERN_INFO "2. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
 
 
-  if (snprintf(ScaleStr, 3, "%2d\n", MGPerLSB) < 0) {
+  if (snprintf(ScaleStr, 3, "%02d\n", MGPerLSB) < 0) {
     printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
     return;
   }

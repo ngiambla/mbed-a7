@@ -26,7 +26,7 @@ int main() {
   OpenDrivers();
   // 3. Continously probe the driver for any accelerometer changes.
   while (Running) {
-    ReadFrom(ACCEL, AccelReadBuffer, AccelReadSize);
+    ReadFrom(ACCEL, AccelReadBuffer, ACCEL_READ_SIZE);
     if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X, &Y, &Z, &ScaleFactor) < 0) {
       ErrorHandler("Could not determine accelerometer output.");
     }
