@@ -370,8 +370,7 @@ void ADXL345_Init(void){
     // Allow for Taps to be detected on the Z axis.
     ADXL345_REG_WRITE(ADXL345_REG_TAP_AXES, 0x01);
 
-
-    ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_SINGLETAP | XL345_SINGLETAP | XL345_ACTIVITY | XL345_INACTIVITY );  //enable interrupts
+    ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_SINGLETAP | XL345_DOUBLETAP | XL345_ACTIVITY | XL345_INACTIVITY );  //enable interrupts
     //-------------------------------//
 
 

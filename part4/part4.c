@@ -47,12 +47,12 @@ int main() {
     if(Main.Valid)
       ClearCircle(Main.X, Main.Y, Main.R);
 
-    if(ItersSingle > 100000) {
+    if(ItersSingle > 10) {
       for(i = 0; i < 11; ++i)
-        PlotChar(i+1, 4, BLACK, ' ');
+        PlotChar(i+1, 3, BLACK, ' ');
     }
 
-    if(ItersDouble > 100000) {
+    if(ItersDouble > 10) {
       for(i = 0; i < 11; ++i)
         PlotChar(i+1, 4, BLACK, ' ');
     }
@@ -74,7 +74,7 @@ int main() {
       AvgY = AvgY*0.3 + Y*(0.7);
       Main.X = (int)AvgX + (XRange>>1);
       Main.Y = (int)AvgY + (YRange>>1);
-      Main.R = 4;
+      Main.R = 3;
       Main.Valid = 1;
 
     }
@@ -83,7 +83,6 @@ int main() {
       for(i = 0; i < 11; ++i)
         PlotChar(i+1, 3, YELLOW, SingleTapEvent[i]);
       ItersSingle = 0;
-
     }
 
     if(InterruptStatus & ACCEL_DOUBLETAP) {
