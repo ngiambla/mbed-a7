@@ -74,17 +74,19 @@ void AccelDataToStr(void) {
   int i;
   int16_t XYZ[3];
 
-  char InterruptStatusStr[3] ={'\0'};
+  char InterruptStatusStr[5] ={'\0'};
   char AccelDataStr[15] = {'\0'};
   char ScaleStr[3] = {'\0'};
   char AccelReadBufTemp[23] = {'\0'};
   
-  int InterruptFlags = ADXL345_WhichInterrupts();
+  uint8_t InterruptFlags = ADXL345_WhichInterrupts();
 
   strcpy(AccelReadBufTemp, ACCEL_READ_BUF);
+
+  printk(KERN_INFO "0. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
   
   // First, Read in the interrupt register into the string.
-  if (snprintf(InterruptStatusStr, 2, "%02x", InterruptFlags) < 0) {
+  if (snprintf(InterruptStatusStr, 3, "%02x\n", InterruptFlags) < 0) {
     printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
     return;
   }
@@ -93,11 +95,13 @@ void AccelDataToStr(void) {
     AccelReadBufTemp[i] = InterruptStatusStr[i];
   }
 
+  printk(KERN_INFO "1. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
+
   // If Data is ready, update the portion of the string
   // with fresh data.
   if (InterruptFlags & XL345_DATAREADY) {
     ADXL345_XYZ_Read(XYZ);
-    if (snprintf(AccelDataStr, 14, "%4d %4d %4d", XYZ[0], XYZ[1], XYZ[2]) < 0) {
+    if (snprintf(AccelDataStr, 15, "%4d %4d %4d\n", XYZ[0], XYZ[1], XYZ[2]) < 0) {
       printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
       return;
     }
@@ -105,25 +109,34 @@ void AccelDataToStr(void) {
     for(i = 3; i < 17; ++i) {
       AccelReadBufTemp[i] = AccelDataStr[i-3];
     }
-  } 
+  }
+  printk(KERN_INFO "2. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
 
-  if (snprintf(ScaleStr, 2, "%2d", MGPerLSB) < 0) {
+
+  if (snprintf(ScaleStr, 3, "%2d\n", MGPerLSB) < 0) {
     printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
     return;
   }
   for(i = 18; i < 20; ++i) {
-    AccelReadBufTemp[i] = ScaleStr[i-19];
+    AccelReadBufTemp[i] = ScaleStr[i-18];
   }
+  printk(KERN_INFO "3. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
+
+
+  AccelReadBufTemp[20] = '\n';
   AccelReadBufTemp[21] = '\0';
   strcpy(ACCEL_READ_BUF, AccelReadBufTemp);
+
+  printk(KERN_INFO "4. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
+
+
 }
 
 
 void InterpCommand(char *Command) {
   uint8_t Resolution;
   uint8_t Gravity;
-  float Rate;
-  uint16_t RateAsInt;
+  uint16_t Rate;
 
 
   if (strncmp(Command, "init", 4) == 0) {
@@ -158,10 +171,9 @@ void InterpCommand(char *Command) {
   if(strncmp(Command, "rate", 4) == 0) {
     // rate R: sets the output data rate to R Hz. Your code should support a few examples of data rates, such
     // as 25 Hz, 12.5 Hz, and so on.
-    if (sscanf(Command + 6, "%*[^0123456789]%f", &Rate) < 1)
+    if (sscanf(Command + 6, "%*[^0123456789]%hd", &Rate) < 1)
       return;
-    RateAsInt = (int)Rate;
-    ADXL345_SetFreq(RateAsInt);
+    ADXL345_SetFreq(Rate);
     return;
   }
 

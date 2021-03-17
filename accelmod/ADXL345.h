@@ -101,38 +101,38 @@ extern volatile unsigned int * I2C0Virt;
 
 void Pinmux_Config(void) {
     // Set up pin muxing (in sysmgr) to connect ADXL345 wires to I2C0
-    *(unsigned int *)(SYSMGRVirt + SYSMGR_I2C0USEFPGA) = 0;
-    *(unsigned int *)(SYSMGRVirt + SYSMGR_GENERALIO7) = 1;
-    *(unsigned int *)(SYSMGRVirt + SYSMGR_GENERALIO8) = 1;
+    *(volatile unsigned int *)(SYSMGRVirt + SYSMGR_I2C0USEFPGA) = 0;
+    *(volatile unsigned int *)(SYSMGRVirt + SYSMGR_GENERALIO7) = 1;
+    *(volatile unsigned int *)(SYSMGRVirt + SYSMGR_GENERALIO8) = 1;
 }
 
 // Initialize the I2C0 controller for use with the ADXL345 chip
 void I2C0_Init(void){
 
     // Abort any ongoing transmits and disable I2C0.
-    *(unsigned int *)(I2C0Virt + I2C0_ENABLE) = 2;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_ENABLE) = 2;
     
     // Wait until I2C0 is disabled
-    while(((*(unsigned int *)(I2C0Virt + I2C0_ENABLE_STATUS))&0x1) == 1);
+    while(((*(volatile unsigned int *)(I2C0Virt + I2C0_ENABLE_STATUS))&0x1) == 1);
     
     // Configure the config reg with the desired setting (act as 
     // a master, use 7bit addressing, fast mode (400kb/s)).
-    *(unsigned int *)(I2C0Virt + I2C0_CON) = 0x65;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_CON) = 0x65;
     
     // Set target address (disable special commands, use 7bit addressing)
-    *(unsigned int *)(I2C0Virt + I2C0_TAR) = 0x53;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_TAR) = 0x53;
     
     // Set SCL high/low counts (Assuming default 100MHZ clock input to I2C0 Controller).
     // The minimum SCL high period is 0.6us, and the minimum SCL low period is 1.3us,
     // However, the combined period must be 2.5us or greater, so add 0.3us to each.
-    *(unsigned int *)(I2C0Virt + I2C0_FS_SCL_HCNT) = 60 + 30; // 0.6us + 0.3us
-    *(unsigned int *)(I2C0Virt + I2C0_FS_SCL_LCNT) = 130 + 30; // 1.3us + 0.3us
+    *(volatile unsigned int *)(I2C0Virt + I2C0_FS_SCL_HCNT) = 60 + 30; // 0.6us + 0.3us
+    *(volatile unsigned int *)(I2C0Virt + I2C0_FS_SCL_LCNT) = 130 + 30; // 1.3us + 0.3us
     
     // Enable the controller
-    *(unsigned int *)(I2C0Virt + I2C0_ENABLE) = 1;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_ENABLE) = 1;
     
     // Wait until controller is enabled
-    while(((*(unsigned int *)(I2C0Virt + I2C0_ENABLE_STATUS))&0x1) == 0);
+    while(((*(volatile unsigned int *)(I2C0Virt + I2C0_ENABLE_STATUS))&0x1) == 0);
     
 }
 
@@ -141,24 +141,24 @@ void I2C0_Init(void){
 void ADXL345_REG_WRITE(uint8_t address, uint8_t value){
     
     // Send reg address (+0x400 to send START signal)
-    *(unsigned int *)(I2C0Virt+I2C0_DATA_CMD) = address + 0x400;
+    *(volatile unsigned int *)(I2C0Virt+I2C0_DATA_CMD) = address + 0x400;
     
     // Send value
-    *(unsigned int *)(I2C0Virt+I2C0_DATA_CMD) = value;
+    *(volatile unsigned int *)(I2C0Virt+I2C0_DATA_CMD) = value;
 }
 
 // Read value from internal register at address
 void ADXL345_REG_READ(uint8_t address, uint8_t *value){
 
     // Send reg address (+0x400 to send START signal)
-    *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = address + 0x400;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = address + 0x400;
     
     // Send read signal
-    *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = 0x100;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = 0x100;
     
     // Read the response (first wait until RX buffer contains data)  
-    while (*(unsigned int *)(I2C0Virt + I2C0_RXFLR) == 0){}
-    *value = *(unsigned int *)(I2C0Virt+I2C0_DATA_CMD);
+    while (*(volatile unsigned int *)(I2C0Virt + I2C0_RXFLR) == 0){}
+    *value = *(volatile unsigned int *)(I2C0Virt+I2C0_DATA_CMD);
 }
 
 // Read multiple consecutive internal registers
@@ -167,16 +167,16 @@ void ADXL345_REG_MULTI_READ(uint8_t address, uint8_t values[], uint8_t len){
     int nth_byte=0;
 
     // Send reg address (+0x400 to send START signal)
-    *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = address + 0x400;
+    *(volatile unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = address + 0x400;
 
     // Send read signal len times
     for (i=0;i<len;i++)
-        *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = 0x100;
+        *(volatile unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = 0x100;
 
     // Read the bytes
     while (len){
-        if ((*(unsigned int *)(I2C0Virt +I2C0_RXFLR)) > 0){
-            values[nth_byte] = *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD);
+        if ((*(volatile unsigned int *)(I2C0Virt +I2C0_RXFLR)) > 0){
+            values[nth_byte] = *(volatile unsigned int *)(I2C0Virt + I2C0_DATA_CMD);
             nth_byte++;
             len--;
         }
