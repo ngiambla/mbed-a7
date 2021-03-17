@@ -65,7 +65,7 @@ int main(void) {
   ADXL345_Calibrate();
 
   while (Running) {
-    if (ADXL345_WasActivityUpdated()) {
+    if (ADXL345_IsDataReady()) {
       ADXL345_XYZ_Read(XYZ);
       printf("X=%d mg, Y=%d mg, Z=%d mg\n", XYZ[0]*MGPerLSB, XYZ[1]*MGPerLSB, XYZ[2]*MGPerLSB);
     }
