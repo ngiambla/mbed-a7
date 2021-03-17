@@ -24,11 +24,11 @@ MODULE_DESCRIPTION("ADXL345 Accelerometer Device Driver");
 // Constant String for Accelerometer driver.
 #define ACCEL_DEV_NAME "accel"
 
-static volatile unsigned int * SYSMGRVirt;
-static volatile unsigned int * I2C0Virt;
+volatile unsigned int * SYSMGRVirt;
+volatile unsigned int * I2C0Virt;
 
-static volatile int16_t MGPerLSB;
-static volatile uint8_t DevID;
+static int16_t MGPerLSB;
+static uint8_t DevID;
 
 
 #define ACCEL_READ_BUF_SIZE 21                   //RR XXXX YYYY ZZZZ SS
@@ -71,15 +71,14 @@ static struct miscdevice AccelDev = {.minor = MISC_DYNAMIC_MINOR,
 static int AccelDevRegistered = NOT_REGISTERED;
 
 void AccelDataToStr(void) {
-  int Status = 0;
   int i;
+  int16_t XYZ[3];
 
   char InterruptStatusStr[3] ={'\0'};
   char AccelDataStr[15] = {'\0'};
   char ScaleStr[3] = {'\0'};
   char AccelReadBufTemp[23] = {'\0'};
-
-  int16_t XYZ[3];
+  
   int InterruptFlags = ADXL345_WhichInterrupts();
 
   strcpy(AccelReadBufTemp, ACCEL_READ_BUF);
@@ -149,7 +148,7 @@ void InterpCommand(char *Command) {
   if(strncmp(Command, "format", 6) == 0) {
     // format F G: sets the data format to fixed 10-bit resolution (F = 0), or full resolution (F = 1), with
     //   range G = +/- 2, 4, 8, or 16 g    
-    if (sscanf(Command + 6, "%*[^0123456789]%d %d", &Resolution, &Gravity) < 2)
+    if (sscanf(Command + 6, "%*[^0123456789]%hhd %hhd", &Resolution, &Gravity) < 2)
       return;
     if(Resolution > 1) return;
     ADXL345_SetG(Resolution, Gravity, &MGPerLSB);

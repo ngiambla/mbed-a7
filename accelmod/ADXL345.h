@@ -1,13 +1,6 @@
 #ifndef __ADXL345_H__
 #define __ADXL345_H__
 
-#include <stdint.h>
-
-typedef int bool;
-#define true 1
-#define false 0
-
-
 /* Bit values in BW_RATE                                                */
 /* Expresed as output data rate */
 #define XL345_RATE_3200       0x0f
@@ -105,26 +98,8 @@ typedef int bool;
 extern volatile unsigned int * SYSMGRVirt;
 extern volatile unsigned int * I2C0Virt;
 
-// ADXL345 Functions
-void ADXL345_Init();
-void ADXL345_Calibrate();
-bool ADXL345_IsDataReady();
-bool ADXL345_WasActivityUpdated();
-void ADXL345_XYZ_Read(int16_t szData16[3]);
-void ADXL345_IdRead(uint8_t *pId);
-void ADXL345_REG_READ(uint8_t address, uint8_t *value);
-void ADXL345_REG_WRITE(uint8_t address, uint8_t value);
-void ADXL345_REG_MULTI_READ(uint8_t address, uint8_t values[], uint8_t len);
 
-// I2C0 Functions
-void I2C0_Init();
-void I2C0_Enable_FPGA_Access();
-
-// Pinmux Functions
-void Pinmux_Config();
-
-
-void Pinmux_Config(){
+void Pinmux_Config(void) {
     // Set up pin muxing (in sysmgr) to connect ADXL345 wires to I2C0
     *(unsigned int *)(SYSMGRVirt + SYSMGR_I2C0USEFPGA) = 0;
     *(unsigned int *)(SYSMGRVirt + SYSMGR_GENERALIO7) = 1;
@@ -132,7 +107,7 @@ void Pinmux_Config(){
 }
 
 // Initialize the I2C0 controller for use with the ADXL345 chip
-void I2C0_Init(){
+void I2C0_Init(void){
 
     // Abort any ongoing transmits and disable I2C0.
     *(unsigned int *)(I2C0Virt + I2C0_ENABLE) = 2;
@@ -188,17 +163,17 @@ void ADXL345_REG_READ(uint8_t address, uint8_t *value){
 
 // Read multiple consecutive internal registers
 void ADXL345_REG_MULTI_READ(uint8_t address, uint8_t values[], uint8_t len){
+    int i;
+    int nth_byte=0;
 
     // Send reg address (+0x400 to send START signal)
     *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = address + 0x400;
-    
+
     // Send read signal len times
-    int i;
     for (i=0;i<len;i++)
         *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD) = 0x100;
 
     // Read the bytes
-    int nth_byte=0;
     while (len){
         if ((*(unsigned int *)(I2C0Virt +I2C0_RXFLR)) > 0){
             values[nth_byte] = *(unsigned int *)(I2C0Virt + I2C0_DATA_CMD);
@@ -206,6 +181,74 @@ void ADXL345_REG_MULTI_READ(uint8_t address, uint8_t values[], uint8_t len){
             len--;
         }
     }
+}
+
+// Return true if there was activity since the last read (checks ACTIVITY bit).
+bool ADXL345_WasActivityUpdated(void){
+    bool bReady = false;
+    uint8_t data8;
+    
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    if (data8 & XL345_ACTIVITY)
+        bReady = true;
+    
+    return bReady;
+}
+
+// Return true if there is new data (checks DATA_READY bit).
+bool ADXL345_IsDataReady(void){
+    bool bReady = false;
+    uint8_t data8;
+    
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    if (data8 & XL345_DATAREADY)
+        bReady = true;
+    
+    return bReady;
+}
+
+uint8_t ADXL345_WhichInterrupts(void) {
+    uint8_t data8;
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    return data8;
+} 
+
+bool ADXL345_WasSingleTapped(void) {
+    bool wasTapped = false;
+    uint8_t data8;
+    
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    if (data8 & XL345_SINGLETAP)
+        wasTapped = true;
+
+    return wasTapped;    
+
+} 
+
+bool ADXL345_WasDoubleTapped(void) {
+    bool wasTapped = false;
+    uint8_t data8;
+    
+    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
+    if (data8 & XL345_DOUBLETAP)
+        wasTapped = true;
+
+    return wasTapped;        
+}
+
+// Read acceleration data of all three axes
+void ADXL345_XYZ_Read(int16_t szData16[3]){
+    uint8_t szData8[6];
+    ADXL345_REG_MULTI_READ(0x32, (uint8_t *)&szData8, sizeof(szData8));
+
+    szData16[0] = (szData8[1] << 8) | szData8[0]; 
+    szData16[1] = (szData8[3] << 8) | szData8[2];
+    szData16[2] = (szData8[5] << 8) | szData8[4];
+}
+
+// Read the ID register
+void ADXL345_IdRead(uint8_t *pId){
+    ADXL345_REG_READ(ADXL345_REG_DEVID, pId);
 }
 
 
@@ -283,7 +326,7 @@ void ADXL345_SetG(bool FullRes, uint16_t G, uint16_t * Scale) {
 }
 
 // Initialize the ADXL345 chip
-void ADXL345_Init(){
+void ADXL345_Init(void){
 
     // Stop Measuring.
     ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_STANDBY);
@@ -329,7 +372,7 @@ void ADXL345_Init(){
 
 // Calibrate the ADXL345. The DE1-SoC should be placed on a flat
 // surface, and must remain stationary for the duration of the calibration.
-void ADXL345_Calibrate(){
+void ADXL345_Calibrate(void){
     
     int average_x = 0;
     int average_y = 0;
@@ -338,6 +381,10 @@ void ADXL345_Calibrate(){
     int8_t offset_x;
     int8_t offset_y;
     int8_t offset_z;
+
+    int i = 0;
+    uint8_t saved_bw;
+    uint8_t saved_dataformat;
     
     // stop measure
     ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_STANDBY);
@@ -348,12 +395,10 @@ void ADXL345_Calibrate(){
     ADXL345_REG_READ(ADXL345_REG_OFSZ, (uint8_t *)&offset_z);
     
     // Use 100 hz rate for calibration. Save the current rate.
-    uint8_t saved_bw;
     ADXL345_REG_READ(ADXL345_REG_BW_RATE, &saved_bw);
     ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_100);
     
     // Use 16g range, full resolution. Save the current format.
-    uint8_t saved_dataformat;
     ADXL345_REG_READ(ADXL345_REG_DATA_FORMAT, &saved_dataformat);
     ADXL345_REG_WRITE(ADXL345_REG_DATA_FORMAT, XL345_RANGE_16G | XL345_FULL_RESOLUTION);
     
@@ -361,7 +406,6 @@ void ADXL345_Calibrate(){
     ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_MEASURE);
     
     // Get the average x,y,z accelerations over 32 samples (LSB 3.9 mg)
-    int i = 0;
     while (i < 32){
         // Note: use DATA_READY here, can't use ACTIVITY because board is stationary.
         if (ADXL345_IsDataReady()){
@@ -401,74 +445,6 @@ void ADXL345_Calibrate(){
     
     // start measure
     ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_MEASURE);
-}
-
-// Return true if there was activity since the last read (checks ACTIVITY bit).
-bool ADXL345_WasActivityUpdated(){
-    bool bReady = false;
-    uint8_t data8;
-    
-    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
-    if (data8 & XL345_ACTIVITY)
-        bReady = true;
-    
-    return bReady;
-}
-
-// Return true if there is new data (checks DATA_READY bit).
-bool ADXL345_IsDataReady(){
-    bool bReady = false;
-    uint8_t data8;
-    
-    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
-    if (data8 & XL345_DATAREADY)
-        bReady = true;
-    
-    return bReady;
-}
-
-uint8_t ADXL345_WhichInterrupts() {
-    uint8_t data8;
-    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
-    return data8;
-} 
-
-bool ADXL345_WasSingleTapped() {
-    bool wasTapped = false;
-    uint8_t data8;
-    
-    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
-    if (data8 & XL345_SINGLETAP)
-        wasTapped = true;
-
-    return wasTapped;    
-
-} 
-
-bool ADXL345_WasDoubleTapped() {
-    bool wasTapped = false;
-    uint8_t data8;
-    
-    ADXL345_REG_READ(ADXL345_REG_INT_SOURCE,&data8);
-    if (data8 & XL345_DOUBLETAP)
-        wasTapped = true;
-
-    return wasTapped;        
-}
-
-// Read acceleration data of all three axes
-void ADXL345_XYZ_Read(int16_t szData16[3]){
-    uint8_t szData8[6];
-    ADXL345_REG_MULTI_READ(0x32, (uint8_t *)&szData8, sizeof(szData8));
-
-    szData16[0] = (szData8[1] << 8) | szData8[0]; 
-    szData16[1] = (szData8[3] << 8) | szData8[2];
-    szData16[2] = (szData8[5] << 8) | szData8[4];
-}
-
-// Read the ID register
-void ADXL345_IdRead(uint8_t *pId){
-    ADXL345_REG_READ(ADXL345_REG_DEVID, pId);
 }
 
 
