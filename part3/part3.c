@@ -24,6 +24,8 @@ int main() {
   int16_t ScaleFactor;
   char OutputString[50];
 
+  float AvgX=0, AvgY=0;
+
   // 1. Register the SIGINT handler.
   signal(SIGINT, IntHandler);
   // 2. Using the API from driverutils.h, open the driver(s)
@@ -40,31 +42,30 @@ int main() {
 
     if(Main.Valid)
       ClearCircle(Main.X, Main.Y, Main.R);
-    if(Single.Valid)
-      ClearCircle(Single.X, Single.Y, Single.R);
-    if(Double.Valid)
-      ClearCircle(Double.X, Double.Y, Double.R);
 
     if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X, &Y, &Z, &ScaleFactor) < 0) {
       ErrorHandler("Could not determine accelerometer output.");
     }
 
     if (InterruptStatus & ACCEL_DATAREADY) {
-      // printf("X=%4d Y=%4d Z=%4d (milli m/s^2)\n", X*ScaleFactor, Y*ScaleFactor, Z*ScaleFactor);
       if (snprintf(OutputString, 50, "X=%4d Y=%4d Z=%4d (milli m/s^2)\n", X*ScaleFactor, Y*ScaleFactor, Z*ScaleFactor) < 0) {
         printf("Error: snprintf was unsuccessful");
         // Terminate the string at pos 0.
         OutputString[0] = '\0';
       }
       for(i = 0; i < strlen(OutputString)-1; ++i)
-        PlotChar(i+1, 3, RED, OutputString[i]);
-      Main.X = X+(XRange>>1);
-      Main.Y = Y+(YRange>>1);
+        PlotChar(i+1, 3, GREEN, OutputString[i]);
+
+      AvgX = AvgX*0.3 + X*(0.7);
+      AvgY = AvgY*0.3 + Y*(0.7);
+      Main.X = (int)AvgX + (XRange>>1);
+      Main.Y = (int)AvgY + (YRange>>1);
       Main.R = 4;
+      Main.Valid = 1;
 
     }
-
-    PlotCircle(Main.X, Main.Y, Main.R, RED);
+    if(Main.Valid)
+      PlotCircle(Main.X, Main.Y, Main.R, RED);
 
   }
   ResetTerminal();

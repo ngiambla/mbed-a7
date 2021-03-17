@@ -44,8 +44,6 @@ static int YRange = 4;
 
 
 struct Circle Main;
-struct Circle Single;
-struct Circle Double;
 
 
 /* BEGIN VT100 Helper Functions */
@@ -123,8 +121,6 @@ void GetTerminalSize() {
 // will be hidden.
 void InitializeTerminal() {
   Main.Valid = 0;
-  Single.Valid = 0;
-  Double.Valid = 0;
   HideCursor();
   ClearTerminal();
   GetTerminalSize();
