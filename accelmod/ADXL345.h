@@ -69,6 +69,8 @@
 #define ADXL345_REG_DUR             0x21
 #define ADXL345_REG_LATENT          0x22
 #define ADXL345_REG_WINDOW          0x23
+#define ADXL345_REG_TAP_AXES        0x2A
+
 // END TAP registers
 #define ADXL345_REG_POWER_CTL   	0x2D
 #define ADXL345_REG_DATA_FORMAT 	0x31
@@ -364,6 +366,9 @@ void ADXL345_Init(void){
     // Double Tap Window = 0.3s
     // 300/ 1.25ms/LSB == 240 (base 10)
     ADXL345_REG_WRITE(ADXL345_REG_WINDOW, 240);
+
+    // Allow for Taps to be detected on the Z axis.
+    ADXL345_REG_WRITE(ADXL345_REG_TAP_AXES, 0x01);
 
 
     ADXL345_REG_WRITE(ADXL345_REG_INT_ENABLE, XL345_SINGLETAP | XL345_SINGLETAP | XL345_ACTIVITY | XL345_INACTIVITY );  //enable interrupts
