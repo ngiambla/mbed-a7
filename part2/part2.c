@@ -1,5 +1,6 @@
 #include <signal.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <time.h>
 
 
@@ -13,11 +14,11 @@ void IntHandler(int inter) { Running = 0; }
 
 int main() {
 
-  int X;
-  int Y;
-  int Z;
-  int InterruptStatus;
-  int ScaleFactor;
+  int16_t X;
+  int16_t Y;
+  int16_t Z;
+  uint8_t InterruptStatus;
+  int16_t ScaleFactor;
 
   // 1. Register the SIGINT handler.
   signal(SIGINT, IntHandler);
@@ -26,8 +27,8 @@ int main() {
   // 3. Continously probe the driver for any accelerometer changes.
   while (Running) {
     ReadFrom(ACCEL, AccelReadBuffer, AccelReadSize);
-    if (sscanf(AccelReadBuffer, "%d %d %d %d %d", &InterruptStatus, &X, &Y, &Z, &ScaleFactor) < 0) {
-      ErrorHandler("Could not determine screen dimensions.");
+    if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X, &Y, &Z, &ScaleFactor) < 0) {
+      ErrorHandler("Could not determine accelerometer output.");
     }
     if (InterruptStatus & ACCEL_DATAREADY) {
       printf("X=%4d Y=%4d Z=%4d (milli m/s^2)\n", X*ScaleFactor, Y*ScaleFactor, Z*ScaleFactor);

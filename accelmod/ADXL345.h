@@ -253,6 +253,7 @@ void ADXL345_IdRead(uint8_t *pId){
 
 
 void ADXL345_SetFreq(uint16_t Freq) {
+    ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_STANDBY);
     switch(Freq) {
         case 3200:
             ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_3200);
@@ -293,10 +294,12 @@ void ADXL345_SetFreq(uint16_t Freq) {
         default:
             ADXL345_REG_WRITE(ADXL345_REG_BW_RATE, XL345_RATE_12_5);
     }
+    ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_MEASURE);
 }
 
 void ADXL345_SetG(bool FullRes, uint16_t G, uint16_t * Scale) {
     uint8_t GSet;
+    ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_STANDBY);
     switch(G) {
         case 2:
             GSet = XL345_RANGE_2G;
@@ -323,6 +326,7 @@ void ADXL345_SetG(bool FullRes, uint16_t G, uint16_t * Scale) {
         *Scale = 4;
     }
     ADXL345_REG_WRITE(ADXL345_REG_DATA_FORMAT, GSet);
+    ADXL345_REG_WRITE(ADXL345_REG_POWER_CTL, XL345_MEASURE);
 }
 
 // Initialize the ADXL345 chip
