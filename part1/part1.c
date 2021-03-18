@@ -6,8 +6,8 @@
 #include <unistd.h>
 
 // Include DE1 Specific Address Maps
-#include "ADXL345.h"
 #include "address_map_arm.h"
+#include "ADXL345.h"
 #include "fileio.h"
 
 unsigned int *SYSMGRVirt;
