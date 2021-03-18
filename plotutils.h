@@ -27,13 +27,14 @@
 #define NUM_LETTERS 25
 
 
-// This struct will represent a point to plot.
+// This struct will represent a circle to plot on the screen with a particular radius.
 struct Circle {
   int X;     // X Coord
   int Y;     // Y Coord
   int R;     // Radius
   int Color; // Color for ASCII disp
-  int Valid;
+  int Valid; // We are not using dynmem, and so we have a globally allocated var, which cannot be "null"
+             // This flag will be used to indicate if the Circle is valid.
 };
 
 // Create two static global variables (i.e., storage local
@@ -43,6 +44,7 @@ static int XRange = 4;
 static int YRange = 4;
 
 
+// The global variable for the circle to draw on screen (representing the position of the accelerometer)
 struct Circle Main;
 
 
@@ -166,7 +168,12 @@ void GeneralizedPlotLine(int X0, int Y0, int X1, int Y1, int Color, char Sym) {
 }
 
 
- 
+// NEW: Circle Drawing Utilities:
+// We present two new APIs to draw circles on the terminal with Assignment 7.
+// In particular the user should call either:
+// (1) PlotCircle 
+//   or
+// (2) ClearCircle
 void CircleDrawUtil(int XC, int YC, int X, int Y, int Color, char Sym) {
   PlotChar(XC + X, YC + Y, Color, Sym);
   PlotChar(XC - X, YC + Y, Color, Sym);

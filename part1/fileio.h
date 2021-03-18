@@ -12,9 +12,7 @@ int open_physical(int fd) {
 }
 
 // Close /dev/mem to give access to physical addresses
-void close_physical(int fd) { 
-  close(fd); 
-}
+void close_physical(int fd) { close(fd); }
 
 /*
  * Establish a virtual address mapping for the physical addresses starting at
@@ -24,7 +22,8 @@ void *map_physical(int fd, unsigned int base, unsigned int span) {
   void *virtual_base;
 
   // Get a mapping from physical addresses to virtual addresses
-  virtual_base = mmap(NULL, span, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, base);
+  virtual_base =
+      mmap(NULL, span, (PROT_READ | PROT_WRITE), MAP_SHARED, fd, base);
   if (virtual_base == MAP_FAILED) {
     printf("ERROR: mmap() failed...\n");
     close(fd);

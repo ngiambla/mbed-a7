@@ -24,14 +24,30 @@ MODULE_DESCRIPTION("ADXL345 Accelerometer Device Driver");
 // Constant String for Accelerometer driver.
 #define ACCEL_DEV_NAME "accel"
 
-volatile unsigned int * SYSMGRVirt;
-volatile unsigned int * I2C0Virt;
+// NOTE: For Parts II, III and IV, I've reused the same kernel module,
+//       since you can encapsulate all behaviours required by having
+//       the output:
+//                  "RR XXXX YYYY ZZZZ SS"
+//       Reasoning:
+//       (1) when reading the the kernel (you can know if the data is ready or
+//       not) from "RR"
+//           which is required in part II and expanded to be generalized in Part
+//           IV. Therefore, I've kept this version which satisfies ALL of the
+//           requirements.
+//       (2) Part III instructs us to have the driver writable (as to issue
+//       commands) which is
+//           also is used in Part IV.
+//
 
+// Global pointers used to refer to SYSMGR and I2C0
+volatile unsigned int *SYSMGRVirt;
+volatile unsigned int *I2C0Virt;
+
+// Global Variables used to hold onto the MGPerLSB and Device ID.
 static int16_t MGPerLSB;
 static uint8_t DevID;
 
-
-#define ACCEL_READ_BUF_SIZE 21                   //RR XXXX YYYY ZZZZ SS
+#define ACCEL_READ_BUF_SIZE 21 // RR XXXX YYYY ZZZZ SS
 static char ACCEL_READ_BUF[ACCEL_READ_BUF_SIZE] = "-- No Data Ready. --";
 
 #define ACCEL_WRITE_BUF_SIZE 40
@@ -40,16 +56,16 @@ static char ACCEL_WRITE_BUF[ACCEL_WRITE_BUF_SIZE] = {'\0'};
 // Declare the methods the video device driver will require.
 // NOTE: we only need to read from the driver to understand the
 //       commands accepted by this driver.
-static int     AccelDevOpen(struct inode *, struct file *);
-static int     AccelDevRelease(struct inode *, struct file *);
+static int AccelDevOpen(struct inode *, struct file *);
+static int AccelDevRelease(struct inode *, struct file *);
 static ssize_t AccelDevRead(struct file *, char *, size_t, loff_t *);
 static ssize_t AccelDevWrite(struct file *, const char *, size_t, loff_t *);
 
 // Define the File Operations for /dev/accel
 static struct file_operations AccelDevFops = {.owner = THIS_MODULE,
-                                              .read =    AccelDevRead,
-                                              .write =   AccelDevWrite,
-                                              .open =    AccelDevOpen,
+                                              .read = AccelDevRead,
+                                              .write = AccelDevWrite,
+                                              .open = AccelDevOpen,
                                               .release = AccelDevRelease};
 
 // Setup Miscellaneous Dev Struct
@@ -74,109 +90,118 @@ void AccelDataToStr(void) {
   int i;
   int16_t XYZ[3];
 
-  char InterruptStatusStr[5] ={'\0'};
+  char InterruptStatusStr[5] = {'\0'};
   char AccelDataStr[15] = {'\0'};
   char ScaleStr[3] = {'\0'};
   char AccelReadBufTemp[23] = {'\0'};
-  
+
   uint8_t InterruptFlags = ADXL345_WhichInterrupts();
 
+  // As one of the requirements, we may not have a data update,
+  // however, we may have interrupt update. Therefore, we wish to
+  // to update the interrupt portion of the string. To do so, we create a
+  // a temporary buffer which is a copy of our original string buffer. All
+  // updates are performed on the temporary string such that any error will
+  // result in NO change to the original string.
   strcpy(AccelReadBufTemp, ACCEL_READ_BUF);
 
-  printk(KERN_INFO "0. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
-  
   // First, Read in the interrupt register into the string.
   if (snprintf(InterruptStatusStr, 3, "%02x\n", InterruptFlags) < 0) {
     printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
     return;
   }
   // Copy this into the AccelReadBufTemp
-  for(i = 0; i < 2; ++i) {
+  for (i = 0; i < 2; ++i) {
     AccelReadBufTemp[i] = InterruptStatusStr[i];
   }
-
-  printk(KERN_INFO "1. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
 
   // If Data is ready, update the portion of the string
   // with fresh data.
   if (InterruptFlags & XL345_DATAREADY) {
+    // Read the XYZ values.
     ADXL345_XYZ_Read(XYZ);
-    if (snprintf(AccelDataStr, 15, "%04d %04d %04d\n", XYZ[0], XYZ[1], XYZ[2]) < 0) {
+    // Format these values into a string buffer.
+    if (snprintf(AccelDataStr, 15, "%04d %04d %04d\n", XYZ[0], XYZ[1], XYZ[2]) <
+        0) {
       printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
       return;
     }
-
-    for(i = 3; i < 17; ++i) {
-      AccelReadBufTemp[i] = AccelDataStr[i-3];
+    // Copy this
+    for (i = 3; i < 17; ++i) {
+      AccelReadBufTemp[i] = AccelDataStr[i - 3];
     }
   }
-  printk(KERN_INFO "2. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
 
-
+  // If the MGPerLSB has changed (via a "format") command,
+  // this needs to be reflected during the next read.
+  // Hence, the string is updated with the current scale factor.
   if (snprintf(ScaleStr, 3, "%02d\n", MGPerLSB) < 0) {
     printk(KERN_ERR "Error [%s]: snprintf was unsuccessful", ACCEL_DEV_NAME);
     return;
   }
-  for(i = 18; i < 20; ++i) {
-    AccelReadBufTemp[i] = ScaleStr[i-18];
+  for (i = 18; i < 20; ++i) {
+    AccelReadBufTemp[i] = ScaleStr[i - 18];
   }
-  printk(KERN_INFO "3. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
-
 
   AccelReadBufTemp[20] = '\n';
   AccelReadBufTemp[21] = '\0';
+  // Finally, copy the updated string back into ACCEL_READ_BUF.
   strcpy(ACCEL_READ_BUF, AccelReadBufTemp);
-
-  printk(KERN_INFO "4. %s %s\n", ACCEL_READ_BUF, AccelReadBufTemp);
-
-
 }
-
 
 void InterpCommand(char *Command) {
   uint8_t Resolution;
   uint8_t Gravity;
   uint16_t Rate;
 
-
   if (strncmp(Command, "init", 4) == 0) {
     // init: re-initializes the ADXL345
-    MGPerLSB = ROUNDED_DIVISION(16*1000, 512);
+    MGPerLSB = ROUNDED_DIVISION(16 * 1000, 512);
     ADXL345_Init();
     return;
   }
 
-  if(strncmp(Command, "device", 6) == 0) {
+  if (strncmp(Command, "device", 6) == 0) {
     // device: prints on the Terminal (using printk) the ADXL345 device ID.
     printk(KERN_INFO "Accelerometer Device ID: %08x\n", DevID);
     return;
   }
 
-  if(strncmp(Command, "calibrate", 9) == 0) {
+  if (strncmp(Command, "calibrate", 9) == 0) {
     // calibrate: calibrates the device.
     ADXL345_Calibrate();
     return;
   }
 
-  if(strncmp(Command, "format", 6) == 0) {
-    // format F G: sets the data format to fixed 10-bit resolution (F = 0), or full resolution (F = 1), with
-    //   range G = +/- 2, 4, 8, or 16 g    
-    if (sscanf(Command + 6, "%*[^0123456789]%hhd %hhd", &Resolution, &Gravity) < 2)
+  if (strncmp(Command, "format", 6) == 0) {
+    // format F G: sets the data format to fixed 10-bit resolution (F = 0), or
+    // full resolution (F = 1), with
+    //   range G = +/- 2, 4, 8, or 16 g
+    if (sscanf(Command + 6, "%*[^0123456789]%hhd %hhd", &Resolution, &Gravity) <
+        2)
       return;
-    if(Resolution > 1) return;
+    if (Resolution > 1)
+      return;
     ADXL345_SetG(Resolution, Gravity, &MGPerLSB);
     return;
   }
 
-  if(strncmp(Command, "rate", 4) == 0) {
-    // rate R: sets the output data rate to R Hz. Your code should support a few examples of data rates, such
-    // as 25 Hz, 12.5 Hz, and so on.
+  if (strncmp(Command, "rate", 4) == 0) {
+    // rate R: sets the output data rate to R Hz.
+    //
+    // As we note in ADXL345_SetFreq:
+    //
+    //       (1) if the user requested freq doesn't exit, we default
+    //           to 12.5 hz.
+    //       (2) When requesting for non-whole number sampling freqs
+    //           (i.e., 12.5, 6.25, 3.125 1.563), the user must only specify
+    //           the integer value of these: (12 == 12.5, 6 = 6.25, etc.)
+    //       (3) We support the frequency range from 3200 hz t0 1.563 hz.
     if (sscanf(Command + 6, "%*[^0123456789]%hd", &Rate) < 1)
       return;
     ADXL345_SetFreq(Rate);
     return;
   }
-
 }
 
 static int __init init_accel(void) {
@@ -212,7 +237,6 @@ static int __init init_accel(void) {
     misc_deregister(&AccelDev);
   }
 
-
   // Configure Pin Muxing
   Pinmux_Config();
 
@@ -230,11 +254,9 @@ static int __init init_accel(void) {
     misc_deregister(&AccelDev);
   }
 
-  MGPerLSB = ROUNDED_DIVISION(16*1000, 512);
-
+  MGPerLSB = ROUNDED_DIVISION(16 * 1000, 512);
   ADXL345_Init();
   ADXL345_Calibrate();
-
   return AccelRegisterStatus;
 }
 
@@ -256,14 +278,13 @@ static int AccelDevOpen(struct inode *inode, struct file *file) {
 /* Called when a process closes /dev/accel */
 static int AccelDevRelease(struct inode *inode, struct file *file) { return 0; }
 
-
 static ssize_t AccelDevRead(struct file *FilP, char *Buffer, size_t Length,
                             loff_t *Offset) {
 
   // Bytes to Sendout.
   size_t BytesToSend;
 
-  if(!(*Offset)) {
+  if (!(*Offset)) {
     AccelDataToStr();
   }
 

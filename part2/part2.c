@@ -1,11 +1,9 @@
 #include <signal.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <time.h>
 
-
 #include "driverutils.h"
-
 
 volatile sig_atomic_t Running = 1;
 struct timespec AnimationTime;
@@ -27,11 +25,13 @@ int main() {
   // 3. Continously probe the driver for any accelerometer changes.
   while (Running) {
     ReadFrom(ACCEL, AccelReadBuffer, ACCEL_READ_SIZE);
-    if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X, &Y, &Z, &ScaleFactor) < 0) {
+    if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X,
+               &Y, &Z, &ScaleFactor) < 0) {
       ErrorHandler("Could not determine accelerometer output.");
     }
     if (InterruptStatus & ACCEL_DATAREADY) {
-      printf("X=%4d Y=%4d Z=%4d (milli m/s^2)\n", X*ScaleFactor, Y*ScaleFactor, Z*ScaleFactor);
+      printf("X=%4d Y=%4d Z=%4d (milli m/s^2)\n", X * ScaleFactor,
+             Y * ScaleFactor, Z * ScaleFactor);
     }
   }
   ReleaseDrivers();

@@ -1,18 +1,15 @@
 #include <signal.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <time.h>
-
 
 #include "driverutils.h"
 #include "plotutils.h"
-
 
 volatile sig_atomic_t Running = 1;
 struct timespec AnimationTime;
 
 void IntHandler(int inter) { Running = 0; }
-
 
 int main() {
 
@@ -24,7 +21,7 @@ int main() {
   int16_t ScaleFactor;
   char OutputString[50];
 
-  float AvgX=0, AvgY=0;
+  float AvgX = 0, AvgY = 0;
 
   // 1. Register the SIGINT handler.
   signal(SIGINT, IntHandler);
@@ -35,43 +32,57 @@ int main() {
   // 4. Calibrate the accelerometer.
   WriteTo(ACCEL, "calibrate", 9);
 
+  // 5. Initialize the terminal to be "drawable"
   InitializeTerminal();
 
   while (Running) {
+    // 6. Read from the accel driver.
     ReadFrom(ACCEL, AccelReadBuffer, ACCEL_READ_SIZE);
 
-    if(Main.Valid)
+    // 7. If the Circle representing the position of the accelerometer is valid,
+    //    clear the previous circle by drawing over it.
+    if (Main.Valid)
       ClearCircle(Main.X, Main.Y, Main.R);
 
-    if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X, &Y, &Z, &ScaleFactor) < 0) {
+    // 8. Re-interpret the string from AccelReadBuffer via sscanf into
+    // variables.
+    if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X,
+               &Y, &Z, &ScaleFactor) < 0) {
       ErrorHandler("Could not determine accelerometer output.");
     }
 
+    // 9. If the InterruptStatus indicates we have data, display the data on the
+    // top-left of the screen (as a string)
     if (InterruptStatus & ACCEL_DATAREADY) {
-      if (snprintf(OutputString, 50, "X=%4d Y=%4d Z=%4d (milli m/s^2)\n", X*ScaleFactor, Y*ScaleFactor, Z*ScaleFactor) < 0) {
+      if (snprintf(OutputString, 50, "X=%4d Y=%4d Z=%4d (milli m/s^2)\n",
+                   X * ScaleFactor, Y * ScaleFactor, Z * ScaleFactor) < 0) {
         printf("Error: snprintf was unsuccessful");
         // Terminate the string at pos 0.
         OutputString[0] = '\0';
       }
-      for(i = 0; i < strlen(OutputString)-1; ++i)
-        PlotChar(i+1, 3, GREEN, OutputString[i]);
+      for (i = 0; i < strlen(OutputString) - 1; ++i)
+        PlotChar(i + 1, 3, GREEN, OutputString[i]);
 
-      AvgX = AvgX*0.3 + X*(0.7);
-      AvgY = AvgY*0.3 + Y*(0.7);
-      Main.X = (int)AvgX + (XRange>>1);
-      Main.Y = (int)AvgY + (YRange>>1);
+      // Now, take those coordinates, and fill-in the fields of the circle
+      // struct (with respect to the center of the terminal) We use a smoothing
+      // factor here by taking a moving average!
+      AvgX = AvgX * 0.3 + X * (0.7);
+      AvgY = AvgY * 0.3 + Y * (0.7);
+      Main.X = (int)AvgX + (XRange >> 1);
+      Main.Y = (int)AvgY + (YRange >> 1);
+      // Set the radius to be 4.
       Main.R = 4;
+      // The circle is indeed valid.
       Main.Valid = 1;
-
     }
-    if(Main.Valid)
+    // Plot the circle if the circle is valid.
+    if (Main.Valid)
       PlotCircle(Main.X, Main.Y, Main.R, RED);
-
   }
   ResetTerminal();
   // Flush all in buffer to stdout.
   fflush(stdout);
-  // Release all drivers.  
+  // Release all drivers.
   ReleaseDrivers();
   return 0;
 }
