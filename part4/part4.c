@@ -13,8 +13,8 @@ void IntHandler(int inter) { Running = 0; }
 
 int main() {
 
-  int ItersSingle = 0;
-  int ItersDouble = 0;
+  clock_t SingleStartTime;
+  clock_t DoubleStartTime;
   int16_t X;
   int16_t Y;
   int16_t Z;
@@ -48,14 +48,13 @@ int main() {
     if (Main.Valid)
       ClearCircle(Main.X, Main.Y, Main.R);
 
-    // 7. After 20 iterations after encountering either a single OR double tap
-    //    clear them off the screen.
-    if (ItersSingle > 20) {
+    // 7. After 5 seconds
+    if (((clock() - SingleStartTime) / CLOCKS_PER_SEC) > 5.0) {
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 3, BLACK, ' ');
     }
 
-    if (ItersDouble > 20) {
+    if (((clock() - DoubleStartTime) / CLOCKS_PER_SEC) > 5.0) {
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 4, BLACK, ' ');
     }
@@ -92,20 +91,18 @@ int main() {
     if (InterruptStatus & ACCEL_SINGLETAP) {
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 3, YELLOW, SingleTapEvent[i]);
-      ItersSingle = 0;
+      SingleStartTime = clock();
     }
 
     if (InterruptStatus & ACCEL_DOUBLETAP) {
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 4, MAGENTA, DoubleTapEvent[i]);
-      ItersDouble = 0;
+      DoubleStartTime = clock();
     }
 
     if (Main.Valid)
       PlotCircle(Main.X, Main.Y, Main.R, RED);
 
-    ItersSingle++;
-    ItersDouble++;
   }
   ResetTerminal();
   // Flush all in buffer to stdout.
