@@ -48,13 +48,13 @@ int main() {
     if (Main.Valid)
       ClearCircle(Main.X, Main.Y, Main.R);
 
-    // 7. After 5 seconds
-    if (((clock() - SingleStartTime) / CLOCKS_PER_SEC) > 5.0) {
+    // 7. After 2 seconds clear any indicators for single/double taps. 
+    if (((clock() - SingleStartTime) / CLOCKS_PER_SEC) > 2.0) {
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 3, BLACK, ' ');
     }
 
-    if (((clock() - DoubleStartTime) / CLOCKS_PER_SEC) > 5.0) {
+    if (((clock() - DoubleStartTime) / CLOCKS_PER_SEC) > 2.0) {
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 4, BLACK, ' ');
     }

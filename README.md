@@ -85,7 +85,7 @@ Additionally, the acceleration in the X, Y and Z planes are displayed as a strin
 
 Lastly, the user level program is able to ask the kernel module if the DE1-SoC has been tapped (either as a single tap
 or a double tap). If a single OR double tap occurs, a message will be displayed in the top left corner of the terminal
-(below the X, Y, Z data string)
+(below the X, Y, Z data string) and will clear after (roughly) 2 seconds.
 
 Build part 1: `cd part4; make clean; make;`
 To Use: `./part4.exe`
