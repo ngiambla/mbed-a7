@@ -13,15 +13,15 @@ void IntHandler(int inter) { Running = 0; }
 
 int main() {
 
-  clock_t SingleStartTime;
-  clock_t DoubleStartTime;
+  clock_t SingleStartTime = 10;
+  clock_t DoubleStartTime = 10;
   int16_t X;
   int16_t Y;
   int16_t Z;
   int i;
   uint8_t InterruptStatus;
   int16_t ScaleFactor;
-  char OutputString[50] = {'\0'};
+  char OutputString[50] = "-- ---- ---- ---- --";
   char SingleTapEvent[] = "Single Tap!";
   char DoubleTapEvent[] = "Double Tap!";
 
@@ -81,15 +81,19 @@ int main() {
     if (InterruptStatus & ACCEL_DOUBLETAP) {
       DoubleStartTime = clock();
     }
+
     for (i = 0; i < strlen(OutputString) - 1; ++i)
       PlotChar(i + 1, 1, GREEN, OutputString[i]);
-    
-    if(((clock() - SingleStartTime) / CLOCKS_PER_SEC) < 2.0)
+ 
+    if(((double)(clock() - SingleStartTime) / CLOCKS_PER_SEC) <= 0.01){
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 3, YELLOW, SingleTapEvent[i]); 
-    if(((clock() - DoubleStartTime) / CLOCKS_PER_SEC) < 2.0)
+    }
+
+    if(((double)(clock() - DoubleStartTime) / CLOCKS_PER_SEC) <= 0.01){
       for (i = 0; i < 11; ++i)
         PlotChar(i + 1, 4, MAGENTA, DoubleTapEvent[i]);
+    }
 
     if (Main.Valid)
       PlotCircle(Main.X, Main.Y, Main.R, RED);

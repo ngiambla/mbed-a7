@@ -19,7 +19,7 @@ int main() {
   int i;
   uint8_t InterruptStatus;
   int16_t ScaleFactor;
-  char OutputString[50] = {'\0'};
+  char OutputString[50] = "-- ---- ---- ---- --";
 
   float AvgX = 0, AvgY = 0;
 
