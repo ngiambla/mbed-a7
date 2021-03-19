@@ -21,7 +21,7 @@ int main() {
   int i;
   uint8_t InterruptStatus;
   int16_t ScaleFactor;
-  char OutputString[50];
+  char OutputString[50] = {'\0'};
   char SingleTapEvent[] = "Single Tap!";
   char DoubleTapEvent[] = "Double Tap!";
 
@@ -42,22 +42,9 @@ int main() {
     // 5. Read from /dev/accel, find out if we've received data.
     ReadFrom(ACCEL, AccelReadBuffer, ACCEL_READ_SIZE);
 
-    // 6.  If the Circle representing the position of the accelerometer is
-    // valid,
-    //    clear the previous circle by drawing over it.
-    if (Main.Valid)
-      ClearCircle(Main.X, Main.Y, Main.R);
 
-    // 7. After 2 seconds clear any indicators for single/double taps. 
-    if (((clock() - SingleStartTime) / CLOCKS_PER_SEC) > 2.0) {
-      for (i = 0; i < 11; ++i)
-        PlotChar(i + 1, 3, BLACK, ' ');
-    }
+    ClearTerminal();
 
-    if (((clock() - DoubleStartTime) / CLOCKS_PER_SEC) > 2.0) {
-      for (i = 0; i < 11; ++i)
-        PlotChar(i + 1, 4, BLACK, ' ');
-    }
 
     // Re-interpret the string from AccelReadBuffer via sscanf into variables.
     if (sscanf(AccelReadBuffer, "%hhx %hd %hd %hd %hd", &InterruptStatus, &X,
@@ -74,11 +61,10 @@ int main() {
         // Terminate the string at pos 0.
         OutputString[0] = '\0';
       }
-      for (i = 0; i < strlen(OutputString) - 1; ++i)
-        PlotChar(i + 1, 1, GREEN, OutputString[i]);
 
-      AvgX = AvgX * 0.3 + X * (0.7);
-      AvgY = AvgY * 0.3 + Y * (0.7);
+
+      AvgX = AvgX * 0.5 + X * (0.5);
+      AvgY = AvgY * 0.5 + Y * (0.5);
       Main.X = (int)AvgX + (XRange >> 1);
       Main.Y = (int)AvgY + (YRange >> 1);
       Main.R = 3;
@@ -89,19 +75,26 @@ int main() {
     // DOUBLETAP event has occured, display: "Single Tap!" or "Double Tap!"
     // below the XYZ string.
     if (InterruptStatus & ACCEL_SINGLETAP) {
-      for (i = 0; i < 11; ++i)
-        PlotChar(i + 1, 3, YELLOW, SingleTapEvent[i]);
       SingleStartTime = clock();
     }
 
     if (InterruptStatus & ACCEL_DOUBLETAP) {
-      for (i = 0; i < 11; ++i)
-        PlotChar(i + 1, 4, MAGENTA, DoubleTapEvent[i]);
       DoubleStartTime = clock();
     }
+    for (i = 0; i < strlen(OutputString) - 1; ++i)
+      PlotChar(i + 1, 1, GREEN, OutputString[i]);
+    
+    if(((clock() - SingleStartTime) / CLOCKS_PER_SEC) < 2.0)
+      for (i = 0; i < 11; ++i)
+        PlotChar(i + 1, 3, YELLOW, SingleTapEvent[i]); 
+    if(((clock() - DoubleStartTime) / CLOCKS_PER_SEC) < 2.0)
+      for (i = 0; i < 11; ++i)
+        PlotChar(i + 1, 4, MAGENTA, DoubleTapEvent[i]);
 
     if (Main.Valid)
       PlotCircle(Main.X, Main.Y, Main.R, RED);
+
+    nanosleep((const struct timespec[]){{0, 100000000L}}, NULL);
 
   }
   ResetTerminal();
