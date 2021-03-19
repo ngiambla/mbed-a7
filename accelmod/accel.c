@@ -8,12 +8,19 @@
 #include <linux/time.h>
 #include <linux/uaccess.h> // for copy_to_user, see code
 
+// Lock out processes when updating/reading.
+#include <linux/mutex.h>
+
 #include "../address_map_arm.h"
 #include "ADXL345.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Nicholas Giamblanco");
 MODULE_DESCRIPTION("ADXL345 Accelerometer Device Driver");
+
+// Define a lock.
+static DEFINE_MUTEX(ADXL345Lock);
+
 
 #define SUCCESS 0
 
@@ -47,8 +54,8 @@ volatile unsigned int *I2C0Virt;
 static int16_t MGPerLSB;
 static uint8_t DevID;
 
-#define ACCEL_READ_BUF_SIZE 21 // RR XXXX YYYY ZZZZ SS
-static char ACCEL_READ_BUF[ACCEL_READ_BUF_SIZE] = "-- No Data Ready. --";
+#define ACCEL_READ_BUF_SIZE 21                  // RR XXXX YYYY ZZZZ SS
+static char ACCEL_READ_BUF[ACCEL_READ_BUF_SIZE] = "00 0000 0000 0000 00";
 
 #define ACCEL_WRITE_BUF_SIZE 40
 static char ACCEL_WRITE_BUF[ACCEL_WRITE_BUF_SIZE] = {'\0'};
@@ -156,8 +163,10 @@ void InterpCommand(char *Command) {
 
   if (strncmp(Command, "init", 4) == 0) {
     // init: re-initializes the ADXL345
+    mutex_lock(&ADXL345Lock);
     MGPerLSB = ROUNDED_DIVISION(16 * 1000, 512);
     ADXL345_Init();
+    mutex_unlock(&ADXL345Lock);
     return;
   }
 
@@ -169,7 +178,9 @@ void InterpCommand(char *Command) {
 
   if (strncmp(Command, "calibrate", 9) == 0) {
     // calibrate: calibrates the device.
+    mutex_lock(&ADXL345Lock);
     ADXL345_Calibrate();
+    mutex_unlock(&ADXL345Lock);
     return;
   }
 
@@ -182,7 +193,9 @@ void InterpCommand(char *Command) {
       return;
     if (Resolution > 1)
       return;
+    mutex_lock(&ADXL345Lock);
     ADXL345_SetG(Resolution, Gravity, &MGPerLSB);
+    mutex_unlock(&ADXL345Lock);
     return;
   }
 
@@ -199,7 +212,9 @@ void InterpCommand(char *Command) {
     //       (3) We support the frequency range from 3200 hz t0 1.563 hz.
     if (sscanf(Command + 6, "%*[^0123456789]%hd", &Rate) < 1)
       return;
+    mutex_lock(&ADXL345Lock);
     ADXL345_SetFreq(Rate);
+    mutex_unlock(&ADXL345Lock);
     return;
   }
 }
@@ -284,6 +299,9 @@ static ssize_t AccelDevRead(struct file *FilP, char *Buffer, size_t Length,
   // Bytes to Sendout.
   size_t BytesToSend;
 
+  mutex_lock(&ADXL345Lock);
+
+
   if (!(*Offset)) {
     AccelDataToStr();
   }
@@ -304,6 +322,7 @@ static ssize_t AccelDevRead(struct file *FilP, char *Buffer, size_t Length,
   //    This allows the next read to "read" from the beginning of the file.
   if (BytesToSend == 0)
     *Offset = 0;
+  mutex_unlock(&ADXL345Lock);
   return BytesToSend;
 }
 
